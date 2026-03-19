@@ -1,0 +1,35 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Model weights
+*.pt
+*.pth
+
+# Training outputs
+runs/
+
+# Dataset (very important)
+data/images/
+data/labels/
+
+# Virtual environments
+.venv/
+.venv2/
+
+# IDE files
+.idea/
+
+# Logs
+*.log
+
+# Videos
+*.mp4
+*.avi
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter notebooks checkpoints (if any)
+.ipynb_checkpoints/
