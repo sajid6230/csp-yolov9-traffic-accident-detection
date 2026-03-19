@@ -1,0 +1,97 @@
+# YOLOv9-t CSP variant
+
+# parameters
+nc: 80  # number of classes (your accident dataset uses 1, but this is OK – dataset yaml will override)
+depth_multiple: 1.0  # model depth multiple
+width_multiple: 1.0  # layer channel multiple
+#activation: nn.LeakyReLU(0.1)
+#activation: nn.ReLU()
+
+# anchors
+anchors: 3
+
+# gelan backbone
+backbone:
+  [
+   # conv down
+   [-1, 1, Conv, [16, 3, 2]],  # 0-P1/2
+
+   # conv down
+   [-1, 1, Conv, [32, 3, 2]],  # 1-P2/4
+
+   # elan-1 block
+   [-1, 1, ELAN1, [32, 32, 16]],  # 2
+
+   # avg-conv down
+   [-1, 1, AConv, [64]],  # 3-P3/8
+
+   # CSP-ELAN-2 block (P3)
+   [-1, 1, CSPRepNCSPELAN4, [64, 64, 32, 3]],  # 4
+
+   # avg-conv down
+   [-1, 1, AConv, [96]],  # 5-P4/16
+
+   # CSP-ELAN-2 block (P4)
+   [-1, 1, CSPRepNCSPELAN4, [96, 96, 48, 3]],  # 6
+
+   # avg-conv down
+   [-1, 1, AConv, [128]],  # 7-P5/32
+
+   # CSP-ELAN-2 block (P5)
+   [-1, 1, CSPRepNCSPELAN4, [128, 128, 64, 3]],  # 8
+  ]
+
+# elan head
+head:
+  [
+   # elan-spp block at P5
+   [-1, 1, SPPELAN, [128, 64]],  # 9
+
+   # up-concat merge (P5 -> P4)
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P4
+
+   # CSP-ELAN-2 block at P4 (first time)
+   [-1, 1, CSPRepNCSPELAN4, [96, 96, 48, 3]],  # 12
+
+   # up-concat merge (P4 -> P3)
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 4], 1, Concat, [1]],  # cat backbone P3
+
+   # CSP-ELAN-2 block at P3 (first time)
+   [-1, 1, CSPRepNCSPELAN4, [64, 64, 32, 3]],  # 15
+
+   # avg-conv-down merge (P3 -> P4)
+   [-1, 1, AConv, [48]],
+   [[-1, 12], 1, Concat, [1]],  # cat head P4
+
+   # CSP-ELAN-2 block at P4 (second time, medium)
+   [-1, 1, CSPRepNCSPELAN4, [96, 96, 48, 3]],  # 18 (P4/16-medium)
+
+   # avg-conv-down merge (P4 -> P5)
+   [-1, 1, AConv, [64]],
+   [[-1, 9], 1, Concat, [1]],  # cat head P5
+
+   # CSP-ELAN-2 block at P5 (second time, large)
+   [-1, 1, CSPRepNCSPELAN4, [128, 128, 64, 3]],  # 21 (P5/32-large)
+
+   # second elan-spp block using backbone P5 (index 8)
+   [8, 1, SPPELAN, [128, 64]],  # 22
+
+   # up-concat merge (second path P5 -> P4)
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P4
+
+   # CSP-ELAN-2 block at P4 (third time)
+   [-1, 1, CSPRepNCSPELAN4, [96, 96, 48, 3]],  # 25
+
+   # up-concat merge (second path P4 -> P3)
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 4], 1, Concat, [1]],  # cat backbone P3
+
+   # CSP-ELAN-2 block at P3 (second time)
+   [-1, 1, CSPRepNCSPELAN4, [64, 64, 32, 3]],  # 28
+
+   # detect
+   [[28, 25, 22, 15, 18, 21], 1, DualDDetect, [nc]],  # Detect(P3, P4, P5)
+  ]
